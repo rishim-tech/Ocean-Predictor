@@ -1,0 +1,11 @@
+backend/venv/
+frontend/node_modules/
+frontend/dist/
+frontend/scratch/
+__pycache__/
+*.pyc
+.env
+.env.*
+!.env.example
+.git_backup/
+.git_old_backup/

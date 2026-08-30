@@ -1,0 +1,182 @@
+@import "tailwindcss";
+
+/*
+ * ─── DESIGN TOKENS ──────────────────────────────────────────────────
+ * Warm Scientific / Marine Research Workstation Theme
+ */
+@theme {
+  --color-paper-bg: #F4F0E8;
+  --color-paper-surface: #FBF9F4;
+  --color-paper-border: #DDD5C8;
+  
+  --color-ink-light: #8B8379;
+  --color-ink-medium: #4A3428;
+  --color-ink-dark: #2C2926;
+  
+  --color-coffee-main: #6F4E37;
+  --color-coffee-hover: #5A3E2A;
+  
+  --color-accent-olive: #6B705C;
+  --color-accent-olive-light: #A5A58D;
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
+}
+
+/*
+ * ─── BASE RESETS ─────────────────────────────────────────────────────
+ */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: var(--color-paper-bg);
+  color: var(--color-ink-dark);
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+}
+
+/*
+ * ─── GLASSMORPHISM PANELS ────────────────────────────────────────────
+ */
+.glass-panel {
+  background: rgba(251, 249, 244, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(221, 213, 200, 0.8);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(44, 41, 38, 0.04),
+              0 1px 3px rgba(44, 41, 38, 0.02);
+}
+
+.glass-panel-strong {
+  background: rgba(251, 249, 244, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(221, 213, 200, 0.9);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(44, 41, 38, 0.06);
+}
+
+/*
+ * ─── CUSTOM INPUT STYLES ────────────────────────────────────────────
+ */
+
+/* Date input styling */
+input[type="date"] {
+  color-scheme: light;
+}
+
+/* Depth slider styling */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--color-paper-border);
+  outline: none;
+  transition: background 0.2s;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-coffee-main);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(111, 78, 55, 0.3);
+  border: 2px solid var(--color-paper-surface);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+  box-shadow: 0 4px 12px rgba(111, 78, 55, 0.4);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-coffee-main);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(111, 78, 55, 0.3);
+  border: 2px solid var(--color-paper-surface);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+/*
+ * ─── SCROLLBAR ───────────────────────────────────────────────────────
+ */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(139, 131, 121, 0.3);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 131, 121, 0.5);
+}
+
+/*
+ * ─── WIREFRAME GRID (Idle State) ────────────────────────────────────
+ */
+.wireframe-grid {
+  background-image:
+    linear-gradient(rgba(139, 131, 121, 0.15) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(139, 131, 121, 0.15) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/*
+ * ─── ANIMATIONS ─────────────────────────────────────────────────────
+ */
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite linear;
+}
+
+@keyframes radar-sweep {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.animate-radar {
+  animation: radar-sweep 4s linear infinite;
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(0.95); }
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 3s ease-in-out infinite;
+}
