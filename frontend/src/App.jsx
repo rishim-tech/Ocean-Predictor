@@ -6,10 +6,15 @@ import VisualizationCanvas from './components/VisualizationCanvas';
 import TelemetryCards from './components/TelemetryCards';
 import ErrorToast from './components/ErrorToast';
 
+import Dashboard from './pages/Dashboard';
+import ArgoSkillPage from './pages/ArgoSkillPage';
+import ExportPage from './pages/ExportPage';
+
 const BASE_URL = 'http://localhost:8001';
 
 const API_URL = `${BASE_URL}/predict`;
 const DEPTHS_URL = `${BASE_URL}/depths`;
+const INPUTS_URL = `${BASE_URL}/inputs`;
 
 /**
  * Returns today's date formatted as YYYY-MM-DD.
@@ -23,7 +28,7 @@ function getTodayISO() {
 }
 
 // Fallback depth array — used only until /depths API responds.
-const DEFAULT_DEPTHS = [0.49, 5.08, 9.57, 18.5, 29.44, 47.37, 77.85, 92.33, 155.85, 186.13, 318.13, 380.21, 541.09, 643.57, 902.34, 1000.0];
+const DEFAULT_DEPTHS = [0, 5, 10, 20, 30, 50, 75, 100, 125, 150, 200, 300, 500, 700, 1000];
 
 export function getDepthIndex(meters, depthsArray) {
   const depths = depthsArray || DEFAULT_DEPTHS;
@@ -41,6 +46,8 @@ export function getDepthIndex(meters, depthsArray) {
 
 export default function App() {
   // ─── State ───────────────────────────────────────────────
+  const [currentPage, setCurrentPage] = useState('dashboard');
+  
   const [date, setDate] = useState(getTodayISO());
   // Model depth levels — synced from backend on mount
   const [modelDepths, setModelDepths] = useState(DEFAULT_DEPTHS);
@@ -49,7 +56,14 @@ export default function App() {
 
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('idle'); // 'idle' | 'loading' | 'active'
-  const [predictionTensor, setPredictionTensor] = useState(null); // full [1,15,lat,lon]
+  
+  // Data stores
+  const [predictionTensor, setPredictionTensor] = useState(null); // full [15,lat,lon]
+  const [inputFields, setInputFields] = useState(null); // The 7 satellite fields
+  
+  // View mode
+  const [viewMode, setViewMode] = useState('prediction'); // 'prediction' or specific input field (e.g. 'sst', 'ssh')
+
   const [telemetry, setTelemetry] = useState({});
   const [error, setError] = useState(null);
 
@@ -66,15 +80,18 @@ export default function App() {
       });
   }, []);
 
-
   const plotData = useMemo(() => {
-    if (!predictionTensor) return null;
-    // predictionTensor shape: [1, 15, lat, lon]
-    // Clamp index to available depth levels
-    const depthLevels = predictionTensor[0];
-    const idx = Math.min(depthIndex, depthLevels.length - 1);
-    return depthLevels[idx]; // [lat, lon] 2D grid
-  }, [predictionTensor, depthIndex]);
+    if (viewMode === 'prediction') {
+      if (!predictionTensor) return null;
+      // predictionTensor shape: [1, 15, lat, lon]
+      const depthLevels = predictionTensor[0];
+      const idx = Math.min(depthIndex, depthLevels.length - 1);
+      return depthLevels[idx]; // [lat, lon] 2D grid
+    } else {
+      if (!inputFields || !inputFields[viewMode]) return null;
+      return inputFields[viewMode];
+    }
+  }, [predictionTensor, inputFields, viewMode, depthIndex]);
 
   // Auto-dismiss error after 6 seconds
   useEffect(() => {
@@ -90,9 +107,7 @@ export default function App() {
     setStatus('loading');
 
     try {
-      const response = await axios.post(API_URL, {
-        date,
-      });
+      const response = await axios.post(API_URL, { date });
       const data = response.data;
 
       // Sync depth levels from backend if provided
@@ -100,23 +115,15 @@ export default function App() {
         setModelDepths(data.depths);
       }
 
-      // Backend returns: { status: 'success', prediction_data: [1,15,lat,lon] }
       const tensor = data.prediction_data;
-
-      if (
-        !Array.isArray(tensor) ||
-        !Array.isArray(tensor[0]) ||
-        !Array.isArray(tensor[0][0])
-      ) {
-        throw new Error(
-          'Backend returned invalid prediction_data — expected a 4D tensor [batch, depth, lat, lon].'
-        );
+      if (!Array.isArray(tensor) || !Array.isArray(tensor[0]) || !Array.isArray(tensor[0][0])) {
+        throw new Error('Backend returned invalid prediction_data.');
       }
 
-      // Store the full tensor so the depth slider can browse layers
       setPredictionTensor(tensor);
+      setInputFields(data.input_fields || null);
+      setViewMode('prediction'); // Reset view to model output
 
-      // Telemetry: compute grid shape from the first 2D slice
       const numDepthLevels = tensor[0].length;
       const latSize = tensor[0][0].length;
       const lonSize = tensor[0][0][0]?.length ?? 0;
@@ -135,11 +142,7 @@ export default function App() {
 
       setStatus('active');
     } catch (err) {
-      const msg =
-        err.response?.data?.detail ||
-        err.response?.data?.message ||
-        err.message ||
-        'An unexpected error occurred while contacting the prediction engine.';
+      const msg = err.response?.data?.detail || err.response?.data?.message || err.message || 'An unexpected error occurred.';
       setError(msg);
       setStatus('idle');
     } finally {
@@ -150,15 +153,15 @@ export default function App() {
   // ─── Render ──────────────────────────────────────────────
   return (
     <div className="h-screen w-screen bg-[var(--color-paper-bg)] text-[var(--color-ink-dark)] font-sans flex flex-col overflow-hidden selection:bg-[#6F4E37] selection:text-white">
-      {/* Error Toast */}
       <ErrorToast message={error} onDismiss={() => setError(null)} />
 
-      {/* Top Header */}
       <header className="flex-none h-16 border-b border-[var(--color-paper-border)] bg-[var(--color-paper-surface)]/80 backdrop-blur-md px-6 flex items-center justify-between z-20">
-        <Header />
-        <div className="flex items-center gap-6">
+        <Header currentPage={currentPage} setCurrentPage={setCurrentPage} />
+        
+        {/* Status indicator moved to the right edge */}
+        <div className="flex items-center gap-6 shrink-0">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] uppercase font-bold tracking-widest text-[var(--color-ink-light)]">Engine Status</span>
+            <span className="text-[10px] uppercase font-bold tracking-widest text-[var(--color-ink-light)] hidden md:block">Engine Status</span>
             <div className={`flex items-center gap-2 px-3 py-1 rounded-full border ${status === 'active' ? 'border-green-600/30 bg-green-50' : 'border-[var(--color-paper-border)] bg-[var(--color-paper-bg)]'}`}>
               <span className={`w-2 h-2 rounded-full ${status === 'active' ? 'bg-green-600' : 'bg-[var(--color-ink-light)]'}`} />
               <span className={`text-[10px] font-bold font-mono tracking-widest ${status === 'active' ? 'text-green-700' : 'text-[var(--color-ink-medium)]'}`}>
@@ -169,38 +172,33 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="flex-1 relative flex overflow-hidden">
+        {currentPage === 'dashboard' && (
+          <Dashboard 
+            status={status}
+            plotData={plotData}
+            depthIndex={depthIndex}
+            telemetry={telemetry}
+            depth={depth}
+            date={date}
+            setDate={setDate}
+            setDepthIndex={setDepthIndex}
+            modelDepths={modelDepths}
+            handleScan={handleScan}
+            loading={loading}
+            viewMode={viewMode}
+            setViewMode={setViewMode}
+            hasInputs={!!inputFields}
+          />
+        )}
         
-        {/* Map + Telemetry Column */}
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          {/* Map Area — hero visual, takes all remaining space */}
-          <div className="flex-1 relative min-h-0">
-            <VisualizationCanvas status={status} plotData={plotData} depthIndex={depthIndex} />
-          </div>
-          
-          {/* Telemetry — compact strip below the map */}
-          <div className="flex-none border-t border-[var(--color-paper-border)]">
-            <TelemetryCards telemetry={{ ...telemetry, depth, depthIndex }} status={status} />
-          </div>
-        </div>
-
-        {/* Side Panel (Right) - Compact Controls */}
-        <aside className="w-60 flex-none border-l border-[var(--color-paper-border)] bg-[var(--color-paper-surface)]/50 backdrop-blur-md flex flex-col z-10">
-          <div className="p-4 flex-1 overflow-y-auto">
-            <ControlPanel
-              date={date}
-              setDate={setDate}
-              depth={depth}
-              depthIndex={depthIndex}
-              setDepthIndex={setDepthIndex}
-              modelDepths={modelDepths}
-              onScan={handleScan}
-              loading={loading}
-            />
-          </div>
-        </aside>
-
+        {currentPage === 'argo' && (
+          <ArgoSkillPage modelDepths={modelDepths} predictionTensor={predictionTensor} />
+        )}
+        
+        {currentPage === 'export' && (
+          <ExportPage predictionTensor={predictionTensor} modelDepths={modelDepths} date={date} />
+        )}
       </main>
     </div>
   );

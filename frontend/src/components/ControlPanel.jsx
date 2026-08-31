@@ -3,18 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, Anchor, Activity, Loader2, Crosshair } from 'lucide-react';
 import { getDepthIndex } from '../App';
 
-export default function ControlPanel({ date, setDate, depth, depthIndex, setDepthIndex, modelDepths, onScan, loading }) {
-  const [localDepth, setLocalDepth] = useState(depth);
-
-  useEffect(() => {
-    setLocalDepth(depth);
-  }, [depth]);
-
-  const handleSliderChange = (e) => {
-    const val = parseFloat(e.target.value);
-    setLocalDepth(val);
-    setDepthIndex(getDepthIndex(val, modelDepths));
-  };
+export default function ControlPanel({ date, setDate, depth, depthIndex, setDepthIndex, modelDepths, onScan, loading, viewMode, setViewMode, hasInputs }) {
 
   return (
     <div className="flex flex-col gap-5 h-full">
@@ -61,12 +50,13 @@ export default function ControlPanel({ date, setDate, depth, depthIndex, setDept
         <div className="relative px-1 pb-2 mt-1">
           <input
             type="range"
-            min={modelDepths[0] || 0}
-            max={modelDepths[modelDepths.length - 1] || 1000}
+            min={0}
+            max={modelDepths.length ? modelDepths.length - 1 : 14}
             step="1"
-            value={localDepth}
-            onChange={handleSliderChange}
+            value={depthIndex}
+            onChange={(e) => setDepthIndex(parseInt(e.target.value))}
             className="w-full"
+            disabled={viewMode !== 'prediction'}
           />
           {/* Ticks */}
           <div className="flex justify-between mt-2 px-0.5">
@@ -74,6 +64,35 @@ export default function ControlPanel({ date, setDate, depth, depthIndex, setDept
              <span className="text-[9px] text-[var(--color-ink-light)] font-mono">{Math.round(modelDepths[modelDepths.length - 1] || 1000)}m</span>
           </div>
         </div>
+      </div>
+
+      {/* Variable / View Mode */}
+      <div className="flex flex-col gap-1.5 mt-2">
+        <label className="flex items-center gap-2 text-[9px] font-bold text-[var(--color-ink-light)] uppercase tracking-widest">
+          <Activity className="w-3 h-3" />
+          Active Layer Variable
+        </label>
+        <select
+          value={viewMode}
+          onChange={(e) => setViewMode(e.target.value)}
+          className="w-full px-3 py-2 rounded bg-[var(--color-paper-bg)] border border-[var(--color-paper-border)] text-[var(--color-ink-dark)] text-sm font-medium font-sans focus:outline-none focus:border-[var(--color-coffee-main)] shadow-inner"
+        >
+          <option value="prediction">Model Output (Temperature)</option>
+          {hasInputs && (
+            <optgroup label="Satellite Inputs">
+              <option value="sst">Sea Surface Temperature (SST)</option>
+              <option value="sss">Sea Surface Salinity (SSS)</option>
+              <option value="ssh">Sea Surface Height (SSH)</option>
+              <option value="u_cur">Zonal Current (U)</option>
+              <option value="v_cur">Meridional Current (V)</option>
+              <option value="u_wind">Zonal Wind (U)</option>
+              <option value="v_wind">Meridional Wind (V)</option>
+            </optgroup>
+          )}
+        </select>
+        {!hasInputs && viewMode === 'prediction' && (
+          <p className="text-[9px] text-[var(--color-ink-light)] mt-1">Run scan to view inputs</p>
+        )}
       </div>
 
       {/* Scan Button */}
